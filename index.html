@@ -8,10 +8,8 @@
       (function () {
         try {
           var params = new URLSearchParams(window.location.search);
-          var insideIframe = false;
-          try { insideIframe = window.self !== window.top; } catch (e) { insideIframe = true; }
-          var isEmbed = params.has('embed') || params.has('miro') || insideIframe;
-          if (isEmbed) {
+          var hasEmbedParam = params.has('embed') || params.has('miro') || params.has('vw');
+          if (hasEmbedParam) {
             var meta = document.querySelector('meta[name="viewport"]');
             if (meta) {
               var targetWidth = params.get('vw') || '1200';
@@ -22,7 +20,7 @@
         } catch (e) { /* noop */ }
       })();
     </script>
-    <title>Дашборд — Штат и инфраструктура (FastAPI)</title>
+    <title>Какой-то калькулятор...</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 p-5 font-sans">

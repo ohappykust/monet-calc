@@ -1,10 +1,10 @@
 <template>
-  <section>
+  <section class="overflow-x-hidden">
     <h2 class="text-lg font-semibold">Финансовый дашборд (36 мес)</h2>
     <p class="text-xs text-gray-600">Сценарии роста и P&L. Поля ФОТ, отчисления и инфра — синхронизированы со штатом и расчётом инфраструктуры (можно переопределить).</p>
 
-    <div class="grid gap-4 items-start lg:[grid-template-columns:420px_1fr] mt-3">
-      <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+    <div ref="gridRef" class="grid gap-4 items-start mt-3 w-full max-w-full" :style="gridStyle">
+      <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm min-w-0">
         <h3 class="text-base font-semibold mb-2">Параметры (входные)</h3>
 
         <label class="block text-sm text-gray-700 mb-2">Пресеты сценариев
@@ -100,10 +100,23 @@
         </div>
       </div>
 
-      <div>
+      <div
+        v-if="isDesktop"
+        class="flex items-stretch select-none cursor-col-resize"
+        @mousedown="onDragStart"
+        @touchstart.prevent="onDragStartTouch"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-valuenow="leftWidth"
+        aria-label="Перетянуть для изменения ширины колонок"
+      >
+        <div class="w-2 bg-gray-200 hover:bg-gray-300 rounded"></div>
+      </div>
+
+      <div class="min-w-0">
         <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
           <h3 class="text-base font-semibold mb-2">Графики (36 мес)</h3>
-          <canvas ref="chartCanvas" height="160"></canvas>
+          <canvas ref="chartCanvas" height="120"></canvas>
           <div class="grid sm:grid-cols-3 gap-3 mt-3">
             <div class="bg-slate-50 p-3 rounded-md text-center"><div class="text-xs text-gray-600">Ежемесячная выручка (последний мес)</div><div class="font-semibold text-lg">{{ lastMonth.revenue?.toLocaleString?.() ?? '—' }} ₽</div></div>
             <div class="bg-slate-50 p-3 rounded-md text-center"><div class="text-xs text-gray-600">Операционные расходы (последний мес)</div><div class="font-semibold text-lg">{{ lastMonth.opex?.toLocaleString?.() ?? '—' }} ₽</div></div>
@@ -113,7 +126,8 @@
 
         <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm mt-3">
           <h3 class="text-base font-semibold mb-2">Таблица (первые 12 мес)</h3>
-          <table class="w-full border-collapse mt-2 text-sm">
+          <div class="overflow-x-auto -mx-4">
+            <table class="w-full min-w-[720px] border-collapse mt-2 text-sm">
             <thead>
               <tr>
                 <th class="px-2 py-2 border-b text-left font-medium text-gray-700">M</th>
@@ -138,7 +152,8 @@
                 <td class="px-2 py-2 border-b">{{ row.cash.toLocaleString() }}</td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -146,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import Chart from 'chart.js/auto'
 import * as XLSX from 'xlsx'
 import { calcFinance } from '../utils/calcFinance.js'
@@ -236,6 +251,139 @@ watch(() => props.payrollTaxRateDefault, (v) => {
 watch(() => props.infraMonthlyDefault, (v) => {
   params.value.infraMonthly = Math.round(v || 0)
 }, { immediate: true })
+
+// Resizable split (settings | content)
+const gridRef = ref(null)
+const isDesktop = ref(false)
+const widthKey = 'dashLeftWidth'
+const verKey = 'dashLeftWidthVersion'
+const splitterVersion = 2
+const defaultLeft = 560
+const leftWidth = ref(defaultLeft)
+const handleWidth = 8
+const minLeft = 280
+const minRight = 320
+
+const gridStyle = computed(() => {
+  if (!isDesktop.value) return { 'grid-template-columns': '1fr' }
+  return { 'grid-template-columns': `${leftWidth.value}px ${handleWidth}px 1fr` }
+})
+
+function updateIsDesktop() {
+  isDesktop.value = window.matchMedia('(min-width: 1024px)').matches
+  measureGap()
+  if (isDesktop.value) clampLeftWidth()
+}
+
+let dragging = false
+let startX = 0
+let startLeft = 0
+let gapPx = 16
+function measureGap() {
+  try {
+    if (gridRef.value) {
+      const cs = getComputedStyle(gridRef.value)
+      const g = parseFloat(cs.columnGap || cs.gap || '16')
+      if (!Number.isNaN(g) && g >= 0) gapPx = g
+    }
+  } catch {}
+}
+
+function onDragStart(e) {
+  if (!isDesktop.value) return
+  dragging = true
+  startX = e.clientX
+  startLeft = leftWidth.value
+  measureGap()
+  document.body.style.cursor = 'col-resize'
+  window.addEventListener('mousemove', onDragMove)
+  window.addEventListener('mouseup', onDragEnd)
+}
+
+function onDragStartTouch(e) {
+  if (!isDesktop.value) return
+  const t = e.touches && e.touches[0]
+  if (!t) return
+  dragging = true
+  startX = t.clientX
+  startLeft = leftWidth.value
+  measureGap()
+  document.body.style.cursor = 'col-resize'
+  window.addEventListener('touchmove', onDragMoveTouch, { passive: false })
+  window.addEventListener('touchend', onDragEndTouch)
+}
+
+function onDragMove(e) {
+  if (!dragging) return
+  applyDelta(e.clientX - startX)
+}
+
+function onDragMoveTouch(e) {
+  if (!dragging) return
+  e.preventDefault()
+  const t = e.touches && e.touches[0]
+  if (!t) return
+  applyDelta(t.clientX - startX)
+}
+
+function applyDelta(dx) {
+  const total = gridRef.value ? gridRef.value.clientWidth : 0
+  // total includes two gaps between three columns
+  const maxLeft = total ? Math.max(minLeft, total - minRight - handleWidth - 2 * gapPx) : 900
+  const next = Math.min(Math.max(minLeft, startLeft + dx), maxLeft)
+  leftWidth.value = Math.round(next)
+  try { localStorage.setItem(widthKey, String(leftWidth.value)) } catch {}
+}
+
+function clampLeftWidth() {
+  if (!gridRef.value) return
+  const total = gridRef.value.clientWidth || 0
+  if (!total) return
+  const maxLeft = Math.max(minLeft, total - minRight - handleWidth - 2 * gapPx)
+  if (leftWidth.value > maxLeft) {
+    leftWidth.value = Math.round(maxLeft)
+  }
+}
+
+function onDragEnd() {
+  if (!dragging) return
+  dragging = false
+  document.body.style.cursor = ''
+  window.removeEventListener('mousemove', onDragMove)
+  window.removeEventListener('mouseup', onDragEnd)
+}
+
+function onDragEndTouch() {
+  if (!dragging) return
+  dragging = false
+  document.body.style.cursor = ''
+  window.removeEventListener('touchmove', onDragMoveTouch)
+  window.removeEventListener('touchend', onDragEndTouch)
+}
+
+onMounted(() => {
+  updateIsDesktop()
+  window.addEventListener('resize', updateIsDesktop)
+  measureGap()
+  try {
+    const savedVer = Number(localStorage.getItem(verKey) || '0')
+    if (savedVer !== splitterVersion) {
+      // apply new default once
+      leftWidth.value = defaultLeft
+      localStorage.setItem(widthKey, String(leftWidth.value))
+      localStorage.setItem(verKey, String(splitterVersion))
+    } else {
+      const saved = Number(localStorage.getItem(widthKey) || '')
+      if (!Number.isNaN(saved) && saved) leftWidth.value = saved
+    }
+  } catch {}
+  clampLeftWidth()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateIsDesktop)
+  onDragEnd(); onDragEndTouch()
+})
 
 // Auto-recalculate whenever any parameter changes
 watch(params, () => {

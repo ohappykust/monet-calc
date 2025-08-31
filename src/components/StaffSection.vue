@@ -7,24 +7,26 @@
       <button class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm" @click="onAdd">Добавить</button>
     </div>
 
-    <table class="w-full border-collapse mt-2 text-sm">
-      <thead>
-        <tr>
-          <th class="px-2 py-2 border-b text-left font-medium text-gray-700">Роль</th>
-          <th class="px-2 py-2 border-b text-left font-medium text-gray-700">Зарплата (gross) ₽/мес</th>
-          <th class="px-2 py-2 border-b"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(s, idx) in staff" :key="idx">
-          <td class="px-2 py-2 border-b">{{ s.role }}</td>
-          <td class="px-2 py-2 border-b">{{ num(s.salary) }}</td>
-          <td class="px-2 py-2 border-b text-right">
-            <button class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-900 hover:bg-gray-200 text-sm" @click="$emit('remove-role', idx)">Удалить</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="overflow-x-auto -mx-4">
+      <table class="w-full min-w-[560px] border-collapse mt-2 text-sm">
+        <thead>
+          <tr>
+            <th class="px-2 py-2 border-b text-left font-medium text-gray-700">Роль</th>
+            <th class="px-2 py-2 border-b text-left font-medium text-gray-700">Зарплата (gross) ₽/мес</th>
+            <th class="px-2 py-2 border-b"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(s, idx) in staff" :key="idx">
+            <td class="px-2 py-2 border-b">{{ s.role }}</td>
+            <td class="px-2 py-2 border-b">{{ num(s.salary) }}</td>
+            <td class="px-2 py-2 border-b text-right">
+              <button class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-900 hover:bg-gray-200 text-sm" @click="$emit('remove-role', idx)">Удалить</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="flex gap-2 flex-wrap mt-2">
       <button class="inline-flex items-center px-3 py-2 rounded-md bg-gray-100 text-gray-900 hover:bg-gray-200 text-sm" @click="$emit('reset-staff')">Сбросить пример</button>

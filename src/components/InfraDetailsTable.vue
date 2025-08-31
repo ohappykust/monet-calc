@@ -1,7 +1,8 @@
 <template>
   <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm mt-3">
     <h2 class="text-lg font-semibold mb-2">Детальные числовые результаты</h2>
-    <table class="w-full border-collapse">
+    <div class="overflow-x-auto -mx-4">
+      <table class="w-full min-w-[560px] border-collapse">
       <thead>
         <tr class="border-b border-gray-200">
           <th class="text-xs font-semibold text-gray-600 uppercase tracking-wide text-left p-2">Показатель</th>
@@ -17,7 +18,8 @@
           <td class="p-2 text-sm text-gray-900">{{ display(v) }}</td>
         </tr>
       </tbody>
-    </table>
+      </table>
+    </div>
   </div>
   </template>
 
